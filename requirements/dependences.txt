@@ -3,3 +3,4 @@ Django==2.2.13
 psutil==5.7.2
 pylint==2.5.3
 python-decouple==3.3
+mysqlclient==2.0.1
