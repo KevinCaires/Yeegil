@@ -1,4 +1,6 @@
 from decouple import config
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 import platform
 import psutil
 import smtplib
@@ -7,8 +9,9 @@ import smtplib
 SERVER = config('SERVER')
 PORT = config('PORT')
 FROM = config('SENDER_MAIL')
-SUBJECT = 'Yeegil - Message.'
-TO = 'Recebe uma lista emails vindas do banco de dados'
+PASSWORD = config('MAIL_PASSWORD')
+SUBJECT = config('SUBJECT')
+
 
 class ComsumptionMonitor:
     """
@@ -22,7 +25,7 @@ class ComsumptionMonitor:
     def memory():  # pylint: disable=no-method-argument
         memory = psutil.virtual_memory()
 
-        return memory[2]
+        return (memory[2] + '%')
 
     def cpu():  # pylint: disable=no-method-argument
         cpu = psutil.cpu_percent()
@@ -34,14 +37,35 @@ class SendMail:
     """
     Classe responsável por manipular e enviar emails com informativos do sistema.
     """
-    def message_send(maq,memo,cpu):  # pylint: disable=no-self-argument
-        message = '''From: %s\r\nTo: %s\r\nSubject: %s\r\n
+    def message_send(server, memory, cpu):  # pylint: disable=no-self-argument
+        # create message object instance
+        msg = MIMEMultipart()
+        
+        # setup the parameters of the message
+        password = PASSWORD
+        msg['From'] = FROM
+        msg['To'] = 'kevincaires@icloud.com'
+        msg['Subject'] = SUBJECT
+        
+        message = f'''
+        SERVER: {server}
+        MEMORY: {memory}
+        CPU: {cpu}
+        '''
 
-        %s
-        %s
-        %s
-        ''' % (FROM, ", ".join(TO), SUBJECT, maq,memo,cpu)
-
-        server =  smtplib.SMTP(SERVER, 25)
-        server.sendmail(FROM,TO,message)
+        # add in the message body
+        msg.attach(MIMEText(message, 'plain'))
+        
+        #create server
+        server = smtplib.SMTP(f'{SERVER}:{PORT}')
+        
+        server.starttls()
+        
+        # Login Credentials for sending the mail
+        server.login(msg['From'], password)
+        
+        
+        # send the message via the server.
+        server.sendmail(msg['From'], msg['To'], msg.as_string())
+        
         server.quit()
